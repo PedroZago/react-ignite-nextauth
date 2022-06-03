@@ -2,7 +2,7 @@ import { createContext, FC, ReactNode, useContext, useEffect, useState } from 'r
 import Router from 'next/router'
 import { setCookie, parseCookies, destroyCookie } from 'nookies'
 
-import { api } from '../services/api';
+import { api } from '../services/apiClient';
 import { AxiosRequestConfig, AxiosRequestHeaders, HeadersDefaults } from 'axios';
 
 interface SmartAxiosDefaults<D = any> extends Omit<AxiosRequestConfig<D>, 'headers'> {
@@ -32,16 +32,21 @@ type SignInCredentials = {
 }
 
 type AuthContextData = {
-  signIn(credentials: SignInCredentials): Promise<void>;
+  signIn: (credentials: SignInCredentials) => Promise<void>;
+  signOut: () => void;
   isAuthenticated: boolean;
   user: User;
 }
 
-const AuthContext = createContext({} as AuthContextData)
+export const AuthContext = createContext({} as AuthContextData)
+
+let authChannel: BroadcastChannel
 
 export const signOut = () => {
   destroyCookie(undefined, 'nextauth.token')
   destroyCookie(undefined, 'nextauth.refreshToken')
+
+  authChannel.postMessage('signOut')
 
   Router.push('/')
 }
@@ -50,6 +55,23 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User>({} as User)
 
   const isAuthenticated = !!user
+
+  useEffect(() => {
+    authChannel = new BroadcastChannel('auth')
+
+    authChannel.onmessage = (message) => {
+      switch (message.data) {
+        case 'signOut':
+          signOut()
+          break
+        // case 'signIn':
+        //   Router.push('/dashboard')
+        //   break
+        default:
+          break
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const { 'nextauth.token': token } = parseCookies()
@@ -98,6 +120,8 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
       apiDefaults.headers['Authorization'] = `Bearer ${token}`;
 
       Router.push('/dashboard')
+
+      // authChannel.postMessage('signIn')
     } catch (error) {
       if (error instanceof EvalError) {
         throw new Error(error.message)
@@ -106,7 +130,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ signIn, isAuthenticated, user }}>
+    <AuthContext.Provider value={{ signIn, isAuthenticated, user, signOut }}>
       {children}
     </AuthContext.Provider>
   )

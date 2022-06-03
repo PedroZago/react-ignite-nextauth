@@ -1,9 +1,11 @@
 import { Flex, Button, Stack } from '@chakra-ui/react'
+import { GetServerSideProps } from 'next'
 import { FormEvent, useState } from 'react'
 
 import { Input } from '../components/Form/Input'
 
 import { useAuth } from '../contexts/AuthContext'
+import { withSSRGuest } from '../utils/withSSRGuest'
 
 const Home = () => {
   const [email, setEmail] = useState('')
@@ -66,26 +68,13 @@ const Home = () => {
         </Button>
       </Flex>
     </Flex>
-
-    // <form
-    //   onSubmit={handleSubmit}
-    //   className={styles.container}
-    // >
-    //   <input
-    //     type="email"
-    //     value={email}
-    //     onChange={e => setEmail(e.target.value)}
-    //   />
-
-    //   <input
-    //     type="password"
-    //     value={password}
-    //     onChange={e => setPassword(e.target.value)}
-    //   />
-
-    //   <button type="submit">Entrar</button>
-    // </form>
   )
 }
 
 export default Home
+
+export const getServerSideProps: GetServerSideProps = withSSRGuest(async (ctx) => {
+  return {
+    props: {}
+  }
+});
